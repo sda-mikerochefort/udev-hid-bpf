@@ -368,7 +368,7 @@ int BPF_PROG(k20_bt_fix_events, struct hid_bpf_ctx *hctx)
 		__u8 y;
 		__u32 buttons;
 		__u8 wheel;
-	} __attribute__((packed)) *pad_report = (struct pad_report *)data;
+	} __packed * pad_report = (struct pad_report *)data;
 
 	if (!data)
 		return 0; /* EPERM check */
