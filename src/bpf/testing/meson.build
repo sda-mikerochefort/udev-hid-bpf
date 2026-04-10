@@ -5,6 +5,7 @@
 # for both approaches.
 tracing_sources = [
     '0010-Huion__KeydialK20-Bluetooth.bpf.c',
+    '0010-Microdia__Aula-Mini60-HE.bpf.c',
 ]
 
 # 'sources' are BPF programs only compatible with
