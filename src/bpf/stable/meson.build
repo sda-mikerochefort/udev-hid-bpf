@@ -11,6 +11,7 @@ tracing_sources = [
     '0010-Huion__Inspiroy-2-S.bpf.c',
     '0010-Huion__Kamvas13Gen3.bpf.c',
     '0010-Huion__Kamvas16Gen3.bpf.c',
+    '0010-Huion__KeydialK20-Bluetooth.bpf.c',
     '0010-Huion__KeydialK20.bpf.c',
     '0010-IOGEAR__Kaliber-MMOmentum.bpf.c',
     '0010-Logitech__SpaceNavigator.bpf.c',
