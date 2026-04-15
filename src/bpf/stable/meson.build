@@ -34,6 +34,7 @@ tracing_sources = [
 # 'sources' are BPF programs only compatible with
 # struct_ops (kernel v6.11+)
 sources = [
+    '0010-Generic__touchpad.bpf.c',
     '0010-XPPen__ACK05.bpf.c',
     '0030-XPPen__ArtistPro16Gen2.bpf.c',
 ]
