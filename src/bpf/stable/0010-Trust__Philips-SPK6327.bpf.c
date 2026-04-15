@@ -42,6 +42,8 @@ int probe(struct hid_bpf_probe_args *ctx)
 		ctx->retval = 0;
 	else
 		ctx->retval = -EINVAL;
+
+	return 0;
 }
 
 char _license[] SEC("license") = "GPL";
