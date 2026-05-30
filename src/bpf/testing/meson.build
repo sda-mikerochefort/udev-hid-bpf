@@ -5,6 +5,7 @@
 # for both approaches.
 tracing_sources = [
     '0010-Microdia__Aula-Mini60-HE.bpf.c',
+    '0010-Gaomon__M6.bpf.c',
 ]
 
 # 'sources' are BPF programs only compatible with

@@ -401,3 +401,73 @@ class TestHuionKeydialK20Bluetooth:
         assert data[2] == 0  # x
         assert data[3] == 0  # y
         assert data[8] == wheel_value
+
+
+@pytest.mark.parametrize("source", ["0010-Gaomon__M6"])
+class TestGaomonM6:
+    @pytest.mark.parametrize("rdesc_size", [36, 119, 92])
+    def test_probe(self, bpf, rdesc_size):
+        probe_args = HidProbeArgs(rdesc_size=rdesc_size)
+        pa = bpf.probe(probe_args)
+        assert pa.retval == 0
+
+    def test_probe_ignore_invalid_size(self, bpf):
+        probe_args = HidProbeArgs(rdesc_size=123)
+        pa = bpf.probe(probe_args)
+        assert pa.retval == -22
+
+    def test_rdesc(self, bpf):
+        rdesc = bytes(36)
+
+        data = bpf.hid_bpf_rdesc_fixup(rdesc=rdesc)
+        assert data[0] == 0x05  # Usage Page (Digitizers)
+
+    @pytest.mark.parametrize(
+        "report, expected",
+        [
+            pytest.param(
+                "08 80 00 00 00 00 00 00 00 00 00 0a",
+                "08 80 00 00 00 00 00 00 00 00 00 f6",
+                id="pen-ytilt-invert",
+            ),
+            pytest.param(
+                "08 e0 01 01 01 00 00 00 00 00 00 00",
+                "09 00 00 00 01 00 00",
+                id="button-1",
+            ),
+            pytest.param(
+                "08 e0 00 00 00 02 00 00 00 00 00 00",
+                "09 00 00 00 00 02 00",
+                id="button-10",
+            ),
+            pytest.param(
+                "08 e0 01 01 00 00 00 00 00 00 00 00",
+                "09 00 00 00 00 00 00",
+                id="button-release",
+            ),
+            pytest.param(
+                "08 f0 00 00 00 01 00 00 00 00 00 00",
+                "09 00 00 00 00 00 f2",
+                id="wheel-pos-1",
+            ),
+            pytest.param(
+                "08 f0 00 00 00 0c 00 00 00 00 00 00",
+                "09 00 00 00 00 00 f3",
+                id="wheel-pos-12",
+            ),
+            pytest.param(
+                "08 f0 00 00 00 00 00 00 00 00 00 00",
+                "09 00 00 00 00 00 00",
+                id="wheel-release",
+            ),
+            # Invalid reports should remain unchanged
+            pytest.param(
+                "01 02 03 04 05 06 07 08 09 0a 0b 0c",
+                "01 02 03 04 05 06 07 08 09 0a 0b 0c",
+                id="invalid-report",
+            ),
+        ],
+    )
+    def test_events(self, bpf, report, expected):
+        event = bpf.hid_bpf_device_event(report=report)
+        assert event == expected
