@@ -487,6 +487,11 @@ pub fn read_udev_property_map(map: &impl MapCore) -> Result<Option<String>, BpfE
         }
     };
 
+    if value_str.chars().any(|c| c.is_ascii_control()) {
+        log::warn!("udev property map contains control characters, ignoring");
+        return Ok(None);
+    }
+
     Ok(Some(value_str))
 }
 
