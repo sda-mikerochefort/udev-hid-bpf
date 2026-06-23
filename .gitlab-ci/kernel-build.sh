@@ -1,11 +1,11 @@
 #!/bin/bash
 
 if [ -z "$KERNEL_URL" ]; then
-  echo "ERRROR: \$KERNEL_URL must be set"
+  echo "ERROR: \$KERNEL_URL must be set"
 fi
 
 if [ -z "$KERNEL_VERSION" ]; then
-  echo "ERRROR: \$KERNEL_VERSION must be set"
+  echo "ERROR: \$KERNEL_VERSION must be set"
 fi
 
 if [ -z "$CI" ]; then

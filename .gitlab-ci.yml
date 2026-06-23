@@ -236,7 +236,7 @@ kernel build container prep:
 #                                                               #
 #################################################################
 
-# Builds a kernel and upoads it to the project's packages
+# Builds a kernel and uploads it to the project's packages
 rebuild kernel:
   parallel:
     matrix:

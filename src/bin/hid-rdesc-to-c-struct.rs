@@ -28,7 +28,7 @@ use std::path::PathBuf;
 #[command(about = "Convert HID report descriptor to C-struct representation")]
 struct Args {
     /// Input file containing HID report descriptor bytes
-    /// If ommitted, read from stdin
+    /// If omitted, read from stdin
     #[arg(value_name = "FILE")]
     input: Option<PathBuf>,
 

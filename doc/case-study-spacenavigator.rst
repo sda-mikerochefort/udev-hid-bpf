@@ -247,7 +247,7 @@ Linux 2.6.33 (released February 2010) contains commit
 
 	   HID: support Logitech/3DConnexion SpaceTraveler and SpaceNavigator
 	   These devices wrongly report their axes as relative instead of absolute.
-	   
+
 	   Fix this in up report descriptor of the device before it enters the parser.
 
 With that change, the Linux HID driver for Logitech devices recognizes
@@ -328,7 +328,7 @@ disconnected and reconnected by the kernel. Avoiding redundant fixes
 thus also avoids unnecessary virtual disconnects.
 
 Unfortunately, while I know the descriptor size for my device, I do not
-not know the size for the devices that are currently being successfully
+know the size for the devices that are currently being successfully
 fixed up by the kernel. Determining this would improve the robustness of
 the BPF fix.
 
@@ -389,7 +389,7 @@ need to use a command like ``bpftool prog load`` to see them.
 In the end, in this case, simply applying the relative-to-absolute
 fix at the appropriate two offsets for my device variant was
 sufficient to make the SpaceNavigator usable via the Gamepad API in both
-Firefix and Chrome. But were we not that lucky, knowledge of udev,
+Firefox and Chrome. But were we not that lucky, knowledge of udev,
 evdev (or libinput in other situations), and web browser internals,
 combined with the ability to rapidly iterate on kernel logic using BPF,
 would help us identify and address any remaining gaps in the chain.

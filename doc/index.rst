@@ -5,7 +5,7 @@ An automatic HID-BPF loader based on udev events. This repository aims to
 provide a simple way for users to write a HID-BPF program that fixes their
 device.
 
-Note that the udev-hid-bpf repository contains there distinct components:
+Note that the udev-hid-bpf repository contains three distinct components:
 
 - ``udev-hid-bpf`` the binary that loads HID-BPF programs
 - A set of HID-BPF programs (see the ``src/bpf`` directory)

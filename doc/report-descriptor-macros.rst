@@ -7,7 +7,7 @@ In the tutorial's :ref:`tutorial_rdesc_fixup` section the example code changed
 individual bytes in the report descriptor. In many cases, particular where a
 new device needs to be supported, a more readable approach is to replace the
 report descriptor wholesale. For this, ``udev-hid-bpf`` provides a series of
-helper macros, see the `hid_report_helpers.h <https://gitlab.freedesktop.org/libevdev/udev-hid-bpf/-/blob/main/src/bpf/hid_report_helpers.h>`_.
+helper macros, see the `hid_report_helpers.h <https://gitlab.freedesktop.org/libevdev/udev-hid-bpf/-/blob/main/src/bpf/hid_report_helpers.h>`_
 source file.
 
 These macros are styled in the output format of `hid-recorder <https://github.com/hidutils/hid-recorder>`_.
@@ -65,7 +65,7 @@ to make the device work without having to change the actual HID reports in the B
 Enforcing the right HID Report size
 -----------------------------------
 
-However there is a drawback: the kernel discards any any HID reports that are
+However there is a drawback: the kernel discards any HID reports that are
 larger than the largest report in the HID report descriptor. Thus a modified
 HID Report Descriptor must include **at least one HID Report** that is (at
 least) the same size as the **largest** report in the original HID Report

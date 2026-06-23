@@ -14,11 +14,11 @@ option('bpf-filter',
 option('placeholder-udev-rules-file',
        type: 'boolean',
        value: false,
-       description: 'Do not substitute the a @BINDIR@ placeholder in the udev rule')
+       description: 'Do not substitute the @BINDIR@ placeholder in the udev rule')
 option('bpfdirs',
        type: 'array',
        value: ['PREFIXED_BPFDIR', '/usr/local/lib/firmware/hid/bpf', '/usr/lib/firmware/hid/bpf', '/lib/firmware/hid/bpf'],
-       description: 'A list of prefixes to load bpf.o files from, in order of preference. The special value PREFIX_BPFDIR resolves to PREFIX/lib/firmware. If empty, only the PREFIX_BPFDIR value is used.')
+       description: 'A list of prefixes to load bpf.o files from, in order of preference. The special value PREFIXED_BPFDIR resolves to PREFIX/lib/firmware. If empty, only the PREFIXED_BPFDIR value is used.')
 option('bpf-tracing',
        type: 'boolean',
        value: true,  # set to true while struct_ops is not in most distributions

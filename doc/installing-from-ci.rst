@@ -5,7 +5,7 @@ Installing BPFs from our CI
 
 "CI" refers to `Continuous Integration <https://en.wikipedia.org/wiki/Continuous_integration>`_,
 a setup that builds and tests our code on every change. Each such build and test
-sequence is referred to as a "pipeline" and you can see all our past piplines
+sequence is referred to as a "pipeline" and you can see all our past pipelines
 `here <https://gitlab.freedesktop.org/libevdev/udev-hid-bpf/-/pipelines>`_.
 A pipeline consists of several "jobs" and jobs may produce downloadable
 packages that are referred to as "artifacts". Our CI configuration is in our
@@ -34,7 +34,7 @@ Then click on the link named "udev-hid-bpf release build for testing" and downlo
 .. figure:: gitlab-exposed-artifact-2.png
    :align: center
 
-Open a terminal and navigate to the path you downloaded the tarball too, e.g. ``~/Downloads/`` and
+Open a terminal and navigate to the path you downloaded the tarball to, e.g. ``~/Downloads/`` and
 unpack it:
 
 .. code-block:: console
@@ -159,7 +159,7 @@ The default prefix is ``/usr/local`` and all files will be installed under that
 prefix. The exception are udev rules which will be installed in ``/etc``.
 
 Keep the directory around until testing is complete, you can uninstall it all with
-our ``uinstall.sh`` script which takes the same options as ``install.sh``:
+our ``uninstall.sh`` script which takes the same options as ``install.sh``:
 
 .. code-block:: console
 
@@ -177,7 +177,7 @@ Finding previous artifacts
 --------------------------
 
 If the merge request pipeline is re-triggered after a code update the newly generated artifact
-will be available by following the same links. To re-retreive a tarball from an earlier pipeline
+will be available by following the same links. To re-retrieve a tarball from an earlier pipeline
 please click on the ``Pipelines`` tab and select the ``make release:archive`` entry from the
 corresponding pipeline's downloads:
 

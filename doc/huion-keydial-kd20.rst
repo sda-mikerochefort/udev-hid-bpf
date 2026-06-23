@@ -19,7 +19,7 @@ automatically, without needing a special kernel driver.
 You will need some understanding of the HID protocol, see :ref:`hid_primer`.
 
 .. note:: This tutorial was written in November 2024 and will not be updated
-          for API changes. It's intention is to guide users into **understanding**
+          for API changes. Its intention is to guide users into **understanding**
           how to implement device support, not to be a template.
 
 .. contents:: Table of Contents
@@ -35,7 +35,7 @@ The tools you will need installed to follow along with this tutorial are:
   kernel evdev data for a device
 - `huion-switcher <https://github.com/whot/huion-switcher>`_ - for switching a Huion tablet
   into vendor mode
-- `udev-hid-bpf <https://gitlab.freedesktop.org/libevev/udev-hid-bpf.git>`_
+- `udev-hid-bpf <https://gitlab.freedesktop.org/libevdev/udev-hid-bpf.git>`_
   from git - for adding a new BPF to support this device
 - `libwacom <https://github.com/linuxwacom/libwacom>`_ from git - for adding
   our device to its database
@@ -243,7 +243,7 @@ There are two other hidraw nodes so let's look at those:
 Note the summary printed by hid-recorder: we have 3 different input reports,
 
   - Report ID 3 is like a keyboard with modifiers
-  - Report ID 4 is a bitmask of of consumer control buttons
+  - Report ID 4 is a bitmask of consumer control buttons
   - Report ID 5 is like a mouse with 5 buttons and a wheel.
 
 
@@ -537,7 +537,7 @@ simultaneously combines the individual masks as expected.
 .. note:: In vendor mode the dial and dial button produce reliable
           reports, unlike in firmware mode.
 
-And the dial reports show  different prefix (``08 f1 01 01``) but otherwise it's
+And the dial reports show a different prefix (``08 f1 01 01``) but otherwise it's
 a predictable ``01`` for CW and ``02`` for CCW::
 
     # ░  Report ID: 8 /
@@ -636,7 +636,7 @@ The hidraw nodes will change as we load/unload the BPF so let's find the path to
     DEBUG - Using HID_BPF_STRUCT_OPS
     INFO - Successfully loaded "./build/src/bpf/0010-Huion__KeydialK20.bpf.o"
 
-Our HID device has four-part component: ``0003:256C:0069.0042``. The last one
+Our HID device has a four-part component: ``0003:256C:0069.0042``. The last one
 (``0042``) increments as the device is added - which will happen as you replace
 the report descriptor. The simple approach is thus to skip that part in the
 `HIDDEVICE` export and use a glob as shown above.
@@ -834,7 +834,7 @@ the BPF function that is called for each input report:
 
 
 And that's it! If we load this BPF program and run hid-recorder against
-our hidraw node (which will have changed number as changing an report descriptor
+our hidraw node (which will have changed number as changing a report descriptor
 re-creates the device):
 
 .. code-block:: console
@@ -1082,7 +1082,7 @@ things. To remove them we need the kernel to ignore them.
 
 This is done by overwriting those nodes' Report Descriptors
 with a vendor-only HID Report Descriptor. Just like the vendor hidraw node that
-the kernel ignored before we changed to to a meaningful one it will now ignore
+the kernel ignored before we changed it to a meaningful one it will now ignore
 the firmware nodes.
 
 But to be on the safe side: we only do this if the ``HUION_FIRMWARE_ID`` udev
@@ -1267,7 +1267,7 @@ file it's easier to copy an existing file and modify it:
 
    $ cp data/layouts/wacom-ek-remote.svg data/layouts/huion-keydial-k20.svg
    $ sed -i 's|Ring|Dial|' data/layouts/huion-keydial-k20.svg
-   $ inscape data/layouts/huion-keydial-k20.svg
+   $ inkscape data/layouts/huion-keydial-k20.svg
    $ meson test -C builddir
 
 libwacom's SVGs have some requirements for labelling objects and the test suite
@@ -1294,7 +1294,7 @@ repo's ``data/`` directory):
 
 That's it - this ``.tablet`` file can now be upstreamed to libwacom. This completes
 our device enablement, the rest of the stack should now work with the device, various
-bugs nonwithstanding.
+bugs notwithstanding.
 
 .. note:: The ``.tablet`` and ``.svg`` files can be placed into
           ``/etc/libwacom/`` and ``/etc/libwacom/layouts/`` until
@@ -1391,7 +1391,7 @@ map them to the corresponding button bit.
             0x2c, /* Button 17: Spacebar */
             0x11, /* Button 18: N */
         };
-        // This is the same struct we used before.j
+        // This is the same struct we used before.
         // Our report descriptor is identical so this
         // works without any effort.
         struct pad_report {

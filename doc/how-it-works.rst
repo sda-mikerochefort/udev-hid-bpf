@@ -6,7 +6,7 @@ How it works
 Below is a high-level overview of how HID-BPF works and how ``udev-hid-bpf``
 enables us to take advantage of it immediately on plug-in.
 
-Note that the udev-hid-bpf repository contains there distinct components:
+Note that the udev-hid-bpf repository contains three distinct components:
 
 - ``udev-hid-bpf`` the binary that loads HID-BPF programs
 - A set of HID-BPF programs (see the ``src/bpf`` directory)

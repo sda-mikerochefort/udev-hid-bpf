@@ -77,7 +77,7 @@ while [[ $# -gt 0 ]]; do
 			MESON_RUN_INSTALL="1"
 			;;
 		*)
-			echo "Unknow commandline argument $1"
+			echo "Unknown commandline argument $1"
 			exit 1
 			;;
 	esac

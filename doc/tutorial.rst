@@ -351,7 +351,7 @@ Bringing it all together
 
 Once the BPF program works as expected, :ref:`installing it <installation>` sets up
 the systemd hwdb and the udev rules for the program to be loaded automatically whenever
-the device is plugged in. This can be verified by checking wether the
+the device is plugged in. This can be verified by checking whether the
 ``HID_BPF_n`` property exists on the device:
 
 .. code-block:: console

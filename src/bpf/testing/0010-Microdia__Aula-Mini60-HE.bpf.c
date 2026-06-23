@@ -74,7 +74,7 @@ int BPF_PROG(fix_aula_rdesc, struct hid_bpf_ctx *hctx)
 	/**
 	 * Fix report descriptor by replacing
 	 *	19 E0 29 E7 (Usage Minimum 224, Usage Maximum 231)
-	 * with seprate usages for each key:
+	 * with separate usages for each key:
 	 */
 	static const __u8 fixed_rdesc_part[] = {
 		Usage_i8(HidUsage_KK_KeyboardLeftControl)
@@ -139,4 +139,3 @@ HID_BPF_OPS(hid_rdesc_fixup_ops) = {
 };
 
 char _license[] SEC("license") = "GPL";
-

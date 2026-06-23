@@ -101,7 +101,7 @@ def to_kernel_tree(repos):
         for blob in blobs
     }
 
-    # get committer informations
+    # get committer information
     with repos.kernel.config_reader() as git_config:
         email = git_config.get_value("user", "email")
         user = git_config.get_value("user", "name")
@@ -223,7 +223,7 @@ def from_kernel_tree(repos):
         if b.name not in ["Makefile", "README"]
     ]
 
-    # get committer informations
+    # get committer information
     with repos.udev_hid_bpf.config_reader() as git_config:
         email = git_config.get_value("user", "email")
         user = git_config.get_value("user", "name")

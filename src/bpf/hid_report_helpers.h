@@ -37,7 +37,7 @@
 #define i8(v_)  ((__u8)(v_)  + must_be((v_) >= -0x80 && (v_) <= 0xff, "not a i8/u8"))
 #define i16(v_) ((__u16)(v_) + must_be((v_) >= -0x8000 && (v_) <= 0xffff, "not a i16/u16"))
 #define i32(v_) ((__u32)(v_) + must_be((v_) >= -0x80000000L && (v_) <= 0xffffffffL, \
-				       "not a i32/u16"))
+				       "not a i32/u32"))
 
 /* Split a value across multiple bytes in LE order */
 #define LE16(v_) i16(v_) & 0xff, ((v_) >> 8) & 0xff
@@ -48,7 +48,7 @@
  * This macro provides both, use like this:
  *
  * static const __u8 fixed_rdesc[] = {
- *     UsagePage_Generic_Desktop
+ *     UsagePage_GenericDesktop
  *     Usage_GD_Keyboard
  *     CollectionApplication(     ← Open the collection
  *         ReportId(3)
@@ -154,7 +154,7 @@
  *
  * e.g.
  *   static __u8 fixed_rdesc = [
- *      UsagePage_Generic_Desktop
+ *      UsagePage_GenericDesktop
  *      Usage_GD_Keyboard
  *      CollectionApplication(
  *          ... intended rdesc items go here ...

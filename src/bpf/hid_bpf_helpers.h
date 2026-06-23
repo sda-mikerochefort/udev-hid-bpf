@@ -202,10 +202,10 @@ static inline void hid_bpf_printk_event(struct hid_bpf_ctx *hctx)
 #define COMBINE(X, Y) COMBINE1(X, Y)
 
 /* Macro magic:
- * __uint(foo, 123) creates a int (*foo)[1234]
+ * __uint(foo, 123) creates a int (*foo)[123]
  *
  * We use that macro to declare an anonymous struct with several
- * fields, each is the declaration of an pointer to an array of size
+ * fields, each is the declaration of a pointer to an array of size
  * bus/group/vid/pid. (Because it's a pointer to such an array, actual storage
  * would be sizeof(pointer) rather than sizeof(array). Not that we ever
  * instantiate it anyway).

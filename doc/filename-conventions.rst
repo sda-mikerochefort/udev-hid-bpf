@@ -54,7 +54,7 @@ The vendor name should be the colloquial reference, e.g. ``HP``, ``Microsoft``,
 Where the product has a technical model name it's best to use the marketing
 name. Where the same name is used for multiple models, suffix the model name.
 And example would be ``0010-Wacom__Intuos-Pro2-CTH660.bpf.o``. This makes the
-files easy to find by humans but stills specific enough that we can distinguish
+files easy to find by humans but still specific enough that we can distinguish
 which device these apply to.
 
 Note that these rules are just guidelines, there are ``.bpf.o`` files that will

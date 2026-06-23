@@ -46,7 +46,7 @@ fn print_to_log(lvl: libbpf_rs::PrintLevel, msg: String) {
     }
 }
 
-// For some reason we can't use PropertyTyple::try_from directly in #[arg(value_parser])
+// For some reason we can't use PropertyTuple::try_from directly in #[arg(value_parser])
 fn tuple_parse(s: &str) -> std::result::Result<hidudev::HidUdevProperty, clap::error::Error> {
     hidudev::HidUdevProperty::try_from(s)
         .map_err(|_| clap::Error::new(clap::error::ErrorKind::ValueValidation))
@@ -861,7 +861,7 @@ fn cmd_install(
     Ok(())
 }
 
-/// Split a list of paths at the occurance of the first '-'
+/// Split a list of paths at the occurrence of the first '-'
 /// element, i.e. [a, b, c, -, d, e] becomes [a, b, c] and [d, e].
 fn split_paths(mut paths: Vec<String>) -> Result<(Vec<String>, Vec<String>)> {
     let divider = String::from("-");

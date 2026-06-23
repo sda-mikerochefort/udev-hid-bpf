@@ -66,15 +66,15 @@ Passing udev properties via the commandline
 -------------------------------------------
 
 ``udev-hid-bpf add`` supports the ``--property KEY=VALUE`` commandline
-argument. Values passed via the commandline work identical to
-udev properties (but take precendence over udev properties).
+argument. Values passed via the commandline work identically to
+udev properties (but take precedence over udev properties).
 
-For example, the following invocation overrides the ``NAME`` and ``SUBSYTEM``
+For example, the following invocation overrides the ``NAME`` and ``SUBSYSTEM``
 udev property:
 
 .. code-block:: console
 
-  $ udev-hid-bpf add --property NAME=MyDevice --property SUBSYTEM=hid /sys/bus/hid/devices/0003:256C:0066
+  $ udev-hid-bpf add --property NAME=MyDevice --property SUBSYSTEM=hid /sys/bus/hid/devices/0003:256C:0066
 
 This approach can be used as convenient configuration mechanism, in particular
 for :ref:`userhacks <stable_testing_userhacks>`.

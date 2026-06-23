@@ -31,7 +31,7 @@ PREFIX=/usr/local
 BPFS=({% for bpf in bpfs %}"{{bpf.filename}}" {% endfor %})
 
 usage () {
-  # Prints anyhing from the first line that is '#\n' to the first empty line
+  # Prints anything from the first line that is '#\n' to the first empty line
   sed -n -e '/^#$/,/^$/s/^#[ ]\?//p' "${BASH_SOURCE[0]}"
 }
 

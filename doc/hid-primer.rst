@@ -78,7 +78,7 @@ the high-level concepts only.
 The HID Report Descriptor is a fixed array of bytes comprised of HID Fields that
 are parsed in sequence and together describe which bit in a HID Report represents
 a particular value. For example, the outcome of such parsing may be the equivalent
-of "bits 8-15 are the X axis with has a logical range of -127 to 127".
+of "bits 8-15 are the X axis which has a logical range of -127 to 127".
 
 A convenient tool to look at HID Report Descriptors is
 `hid-recorder <https://github.com/hidutils/hid-recorder>`_.
@@ -93,7 +93,7 @@ has at least:
 A HID Report Descriptor is a stack, pushing a field on the
 stack means it applies to subsequent fields until it is popped off the stack.
 When this happens depends on the HID Field, see the `HID Protocol
-Specificiation <https://www.usb.org/sites/default/files/hid1_11.pdf>`_ for
+Specification <https://www.usb.org/sites/default/files/hid1_11.pdf>`_ for
 details.
 
 For example a pair of x/y axes may appear as this::
@@ -143,7 +143,7 @@ Each HID Report Descriptor may describe multiple HID Reports.
 HID Usage Tables
 ----------------
 
-The HID Usage Tables (HUT) are effectively a large datase that maps the
+The HID Usage Tables (HUT) are effectively a large database that maps the
 numerical values in the HID Report Descriptor for Usage Pages and Usage IDs
 to the respective semantic value. They allow a HID Report Descriptor
 parser to look up e.g. Usage Page ``0x01`` / Usage ID ``0x30`` and resolve it

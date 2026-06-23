@@ -23,7 +23,7 @@ For details on required dependencies etc. please see [our documentation](https:/
 
 ## Quirks, user hack, testing and stable
 
-`udev-hid-bpf` divide HID-BPF programs into two categories: quirks and user hacks. Quirks are programs that
+`udev-hid-bpf` divides HID-BPF programs into two categories: quirks and user hacks. Quirks are programs that
 fix a device that objectively has a hardware or firmware bug. Examples include axis that are inverted, provide
 the wrong ranges/values or event sequences that are logically impossible.
 We expect that quirks are eventually upstreamed into the kernel.
