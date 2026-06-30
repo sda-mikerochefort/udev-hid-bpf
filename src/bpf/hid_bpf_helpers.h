@@ -6,7 +6,16 @@
 #define __HID_BPF_HELPERS_H
 
 #include "vmlinux.h"
+
+/*
+ * Workaround for libbpf < 1.7 where bpf_helpers.h declares
+ * bpf_stream_vprintk with a 5-arg _impl-style signature that
+ * conflicts with the 4-arg kfunc in kernel >= 7.0 vmlinux.h.
+ * Suppress the redeclaration by shadowing it with a macro.
+ */
+#define bpf_stream_vprintk __hid_bpf_stream_vprintk_unused
 #include <bpf/bpf_helpers.h>
+#undef bpf_stream_vprintk
 #include <bpf/bpf_endian.h>
 #include <linux/errno.h>
 #include "hid_report_descriptor_helpers.h"
@@ -60,10 +69,33 @@ extern int hid_bpf_try_input_report(struct hid_bpf_ctx *ctx,
 				    enum hid_report_type type,
 				    __u8 *data,
 				    size_t buf__sz) __weak __ksym;
+/*
+ * bpf_wq_set_callback compatibility:
+ *
+ * On kernel >= 7.0, bpf_wq_set_callback is a 3-arg kfunc (declared
+ * in vmlinux.h as __weak __ksym). On kernel < 7.0, only the 4-arg
+ * bpf_wq_set_callback_impl exists.
+ *
+ */
+extern int bpf_wq_set_callback_impl(struct bpf_wq *wq,
+		int (*callback_fn)(void *map, int *key, void *value),
+		unsigned int flags__k, void *aux__ign) __weak __ksym;
+extern int bpf_wq_set_callback(struct bpf_wq *wq,
+		int (*callback_fn)(void *, int *, void *),
+		unsigned int flags) __weak __ksym;
 #pragma GCC diagnostic pop
 
-#define bpf_wq_set_callback(wq, cb, flags) \
-	bpf_wq_set_callback_impl(wq, cb, flags, NULL)
+static inline int
+hid_bpf_wq_set_callback(struct bpf_wq *wq,
+			 int (*callback_fn)(void *, int *, void *),
+			 unsigned int flags)
+{
+	if (bpf_ksym_exists(bpf_wq_set_callback))
+		return bpf_wq_set_callback(wq, callback_fn, flags);
+	if (bpf_ksym_exists(bpf_wq_set_callback_impl))
+		return bpf_wq_set_callback_impl(wq, callback_fn, flags, NULL);
+	return -ENOSYS;
+}
 
 #define HID_MAX_DESCRIPTOR_SIZE	4096
 #define HID_IGNORE_EVENT	-1

@@ -804,7 +804,7 @@ int probe(struct hid_bpf_probe_args *ctx)
 			bpf_timer_set_callback(&value->t, haptic_timer_cb);
 
 			bpf_wq_init(&value->wq, &timer_map, 0);
-			bpf_wq_set_callback(&value->wq, haptic_wq_cb, 0);
+			hid_bpf_wq_set_callback(&value->wq, haptic_wq_cb, 0);
 			break;
 
 		case MAP_KEY_SLEEP:

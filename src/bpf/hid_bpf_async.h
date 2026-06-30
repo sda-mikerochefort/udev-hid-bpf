@@ -110,7 +110,7 @@ static int ____async_init_##fun(const char *name)			\
 					&____key__##fun);		\
 	if (!__elem)							\
 		return -EINVAL;						\
-	__err = bpf_wq_set_callback(&__elem->wq, ____##fun##_cb, 0);	\
+	__err = hid_bpf_wq_set_callback(&__elem->wq, ____##fun##_cb, 0);\
 	if (__err)							\
 		return __err;						\
 	__elem->name = name;						\
@@ -221,7 +221,7 @@ static int hid_bpf_async_delayed_call(struct hid_bpf_ctx *hctx, u64 milliseconds
 	elem->hid = hctx->hid->id;
 
 	if (wq_cb) {
-		err = bpf_wq_set_callback(&elem->wq, wq_cb, 0);
+		err = hid_bpf_wq_set_callback(&elem->wq, wq_cb, 0);
 		if (err)
 			return err;
 	}
@@ -262,7 +262,7 @@ static inline int hid_bpf_async_set_delayed_cb(int key, hid_bpf_async_callback_t
 		}
 	}
 
-	return bpf_wq_set_callback(&elem->wq, wq_cb, 0);
+	return hid_bpf_wq_set_callback(&elem->wq, wq_cb, 0);
 }
 
 static inline int hid_bpf_async_call(struct hid_bpf_ctx *ctx, int key,
