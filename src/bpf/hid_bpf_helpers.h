@@ -24,6 +24,44 @@
 #define __maybe_unused __attribute__((__unused__))
 #endif
 
+/*
+ * re-declare the HID-BPF helpers:
+ * pahole <1.31 has a bug in which if the compiler generates hot and cold
+ * path for the kfuncs, pahole won't emit the DECL_TAG for such kfuncs, and
+ * they will not appear in the resulting vmlinux.h.
+ *
+ * This was fixed in commit 09c1e9c "btf_encoder: Group all function ELF syms
+ * by function name"
+ *
+ * Fedora 44 currently ships pahole v1.30, so I guess other distros may be
+ * shipping outdated pahole, and it's safer to redefine the controlled kfuncs
+ * to prevent such a bug.
+ */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wredundant-decls"
+
+extern __u8 *hid_bpf_get_data(struct hid_bpf_ctx *ctx,
+			      unsigned int offset,
+			      const size_t __sz) __ksym;
+extern struct hid_bpf_ctx *hid_bpf_allocate_context(unsigned int hid_id) __ksym;
+extern void hid_bpf_release_context(struct hid_bpf_ctx *ctx) __ksym;
+extern int hid_bpf_hw_request(struct hid_bpf_ctx *ctx,
+			      __u8 *data,
+			      size_t buf__sz,
+			      enum hid_report_type type,
+			      enum hid_class_request reqtype) __ksym;
+extern int hid_bpf_hw_output_report(struct hid_bpf_ctx *ctx,
+				    __u8 *buf, size_t buf__sz) __weak __ksym;
+extern int hid_bpf_input_report(struct hid_bpf_ctx *ctx,
+				enum hid_report_type type,
+				__u8 *data,
+				size_t buf__sz) __weak __ksym;
+extern int hid_bpf_try_input_report(struct hid_bpf_ctx *ctx,
+				    enum hid_report_type type,
+				    __u8 *data,
+				    size_t buf__sz) __weak __ksym;
+#pragma GCC diagnostic pop
+
 #define bpf_wq_set_callback(wq, cb, flags) \
 	bpf_wq_set_callback_impl(wq, cb, flags, NULL)
 
