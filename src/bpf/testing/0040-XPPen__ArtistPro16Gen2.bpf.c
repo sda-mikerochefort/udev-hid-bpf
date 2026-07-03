@@ -11,11 +11,13 @@
 #define PID_ARTIST_PRO14_GEN2 0x095A
 #define PID_ARTIST_PRO16_GEN2 0x095B
 #define PID_ARTIST_PRO19_GEN2 0x096A
+#define PID_ARTIST_PRO27_GEN2 0x097A
 
 HID_BPF_CONFIG(
 	HID_DEVICE(BUS_USB, HID_GROUP_GENERIC, VID_UGEE, PID_ARTIST_PRO14_GEN2),
 	HID_DEVICE(BUS_USB, HID_GROUP_GENERIC, VID_UGEE, PID_ARTIST_PRO16_GEN2),
-	HID_DEVICE(BUS_USB, HID_GROUP_GENERIC, VID_UGEE, PID_ARTIST_PRO19_GEN2)
+	HID_DEVICE(BUS_USB, HID_GROUP_GENERIC, VID_UGEE, PID_ARTIST_PRO19_GEN2),
+	HID_DEVICE(BUS_USB, HID_GROUP_GENERIC, VID_UGEE, PID_ARTIST_PRO27_GEN2)
 );
 
 /*
@@ -108,6 +110,12 @@ int BPF_PROG(hid_fix_rdesc_xppen_artistpro16gen2, struct hid_bpf_ctx *hctx)
 		data[62] = 0xe5;
 		data[73] = 0x23;
 		data[72] = 0x61;
+	} else if (hctx->hid->product == PID_ARTIST_PRO27_GEN2) {
+		/* 27" screen reports 23.535" x 13.228" */
+		data[63] = 0x5b;
+		data[62] = 0xef;
+		data[73] = 0x33;
+		data[72] = 0xac;
 	}
 
 	return sizeof(fixed_rdesc);
@@ -206,6 +214,25 @@ static const __u16 angle_offsets_vertical_19[128] = {
 	165, 163, 161
 };
 
+/* 27" inch screen 23.535" x 13.228" */
+static const __u16 angle_offsets_horizontal_27[128] = {
+	0, 1, 3, 4, 5, 7, 8, 9, 11, 12, 13, 15, 16, 17, 19, 20, 21, 23, 24, 25, 27, 28, 29,
+	30, 32, 33, 34, 35, 36, 38, 39, 40, 41, 42, 43, 44, 46, 47, 48, 49, 50, 51, 52, 53,
+	54, 55, 56, 57, 58, 59, 59, 60, 61, 62, 63, 63, 64, 65, 66, 66, 67, 68, 68, 69, 70,
+	70, 71, 71, 72, 72, 73, 73, 74, 74, 75, 75, 75, 76, 76, 76, 76, 77, 77, 77, 77, 77,
+	77, 77, 77, 78, 78, 78, 77, 77, 77, 77, 77, 77, 77, 77, 76, 76, 76, 76, 75, 75, 75,
+	74, 74, 73, 73, 72, 72, 71, 71, 70, 70, 69, 68, 68, 67, 66, 66, 65, 64, 63, 63, 62
+};
+static const __u16 angle_offsets_vertical_27[128] = {
+	0, 2, 5, 7, 10, 12, 14, 17, 19, 22, 24, 26, 29, 31, 33, 36, 38, 40, 43, 45, 47, 49,
+	52, 54, 56, 58, 60, 63, 65, 67, 69, 71, 73, 75, 77, 79, 81, 83, 85, 87, 89, 90, 92,
+	94, 96, 98, 99, 101, 102, 104, 106, 107, 109, 110, 112, 113, 114, 116, 117, 118, 119,
+	121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 130, 131, 132, 133, 133, 134, 134,
+	135, 135, 136, 136, 137, 137, 137, 137, 138, 138, 138, 138, 138, 138, 138, 138, 138,
+	137, 137, 137, 137, 136, 136, 135, 135, 134, 134, 133, 133, 132, 131, 130, 130, 129,
+	128, 127, 126, 125, 124, 123, 122, 121, 119, 118, 117, 116, 114, 113, 112, 110
+};
+
 static void compensate_coordinates_by_tilt(__u8 *data, const __u8 idx,
 		const __s8 tilt, const __u16 (*compensation_table)[128])
 {
@@ -282,6 +309,10 @@ static int xppen_16_fix_angle_offset(struct hid_bpf_ctx *hctx)
 	case PID_ARTIST_PRO19_GEN2:
 		compensate_coordinates_by_tilt(data, 2, tilt_x, &angle_offsets_horizontal_19);
 		compensate_coordinates_by_tilt(data, 4, tilt_y, &angle_offsets_vertical_19);
+		break;
+	case PID_ARTIST_PRO27_GEN2:
+		compensate_coordinates_by_tilt(data, 2, tilt_x, &angle_offsets_horizontal_27);
+		compensate_coordinates_by_tilt(data, 4, tilt_y, &angle_offsets_vertical_27);
 		break;
 	}
 
