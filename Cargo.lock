@@ -347,7 +347,7 @@ dependencies = [
  "anyhow",
  "cargo_metadata",
  "clap",
- "libbpf-rs 0.24.8",
+ "libbpf-rs",
  "memmap2",
  "regex",
  "semver",
@@ -361,18 +361,6 @@ name = "libbpf-rs"
 version = "0.24.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93edd9cd673087fa7518fd63ad6c87be2cd9b4e35034b1873f3e3258c018275b"
-dependencies = [
- "bitflags",
- "libbpf-sys",
- "libc",
- "vsprintf",
-]
-
-[[package]]
-name = "libbpf-rs"
-version = "0.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e23d252d93e246c8787198369f06806c99c5077b5295be29505295f4e5426dc4"
 dependencies = [
  "bitflags",
  "libbpf-sys",
@@ -760,14 +748,14 @@ dependencies = [
 
 [[package]]
 name = "udev-hid-bpf"
-version = "2.2.0-20251121"
+version = "2.3.0-20260703"
 dependencies = [
  "anyhow",
  "base64",
  "clap",
  "hidreport",
  "libbpf-cargo",
- "libbpf-rs 0.25.0",
+ "libbpf-rs",
  "libbpf-sys",
  "libc",
  "linkme",
