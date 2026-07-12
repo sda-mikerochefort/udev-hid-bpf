@@ -315,6 +315,15 @@ checkpatch.pl:
   script:
     - ./tools/checkpatch.pl --no-tree --file src/bpf/testing/*.[ch]
 
+
+check-bpf-object-files:
+  extends:
+    - .fedora-meson@template
+  script:
+    - meson setup "$MESON_BUILDDIR" $MESON_ARGS -Dbpfs=stable,testing,userhacks
+    - .gitlab-ci/check-bpf-files.sh "$MESON_BUILDDIR"
+
+
 meson build and test:
   extends:
     - .fedora-meson@template
