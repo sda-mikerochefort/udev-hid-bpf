@@ -7,6 +7,7 @@ tracing_sources = [
     '0010-Microdia__Aula-Mini60-HE.bpf.c',
     '0010-Gaomon__M6.bpf.c',
     '0010-XPPen__DecoProV1.bpf.c',
+    '0010-XPPen__Artist12_3rd.bpf.c',
     '0040-XPPen__ArtistPro16Gen2.bpf.c',
     '0010-Iiyama__ProLite-TE9804MIS.bpf.c',
     '0010-XPPen__DecoSE.bpf.c',
