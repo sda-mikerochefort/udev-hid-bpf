@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/* Copyright (c) 2026 XP-Pen Deco SE contributor
+/* Copyright (c) 2026 Yangtse Su
  *
  * XP-Pen Deco SE (VID 0x28BD, PID 0x0949) is the same hardware family as
  * the XP-Pen Deco 01 V3 (0x0947): it exposes three HID interfaces, the
@@ -32,9 +32,12 @@
  * descriptor) that merges all three collections: the bogus absolute
  * "Mouse" (report 9), the keyboard carrying the pad button key sequences
  * (report 6) and the pen (report 7, with the same wrong +/-127 tilt
- * range). probe() accepts this size and the fixup replaces the merged
- * descriptor with the fixed pad descriptor followed by the fixed pen
- * descriptor.
+ * range). The merged descriptor is the default-mode pad descriptor
+ * (102-byte variant) directly followed by the pen descriptor
+ * (211 = 102 + 109). probe() accepts this size and the fixup replaces
+ * the merged descriptor with the fixed pad descriptor followed by the
+ * fixed pen descriptor, after checking that the layout really is
+ * pad-then-pen.
  *
  * The pad report descriptor, see
  * https://gitlab.freedesktop.org/libevdev/udev-hid-bpf/-/issues/54
@@ -95,7 +98,7 @@
 #include "hid_report_helpers.h"
 #include <bpf/bpf_tracing.h>
 
-#define VID_UGEE 0x28BD /* VID is shared with SinoWealth and Glorious and prob others */
+#define VID_UGEE 0x28BD /* VID is shared with SinoWealth and Glorious and probably others */
 #define PID_DECO_SE 0x0949
 
 #define PEN_REPORT_DESCRIPTOR_LENGTH 109
@@ -197,6 +200,19 @@ int BPF_PROG(xppen_decose_rdesc_fixup, struct hid_bpf_ctx *hctx)
 		__builtin_memcpy(data, fixed_rdesc_pad, sizeof(fixed_rdesc_pad));
 		return sizeof(fixed_rdesc_pad);
 	case BT_REPORT_DESCRIPTOR_LENGTH:
+		/* The merged descriptor is the 102-byte pad descriptor
+		 * directly followed by the pen descriptor. Do not
+		 * replace it unless the layout really is pad-then-pen:
+		 * check the pen report ID (0x85 0x07 at offset
+		 * 102 + 6) and the wrong tilt range (at offsets
+		 * 102 + 89 and 102 + 101).
+		 */
+		if (__builtin_memcmp(&data[108], (const __u8[]){0x85, 0x07}, 2) != 0 ||
+		    __builtin_memcmp(&data[191], wrong_logical_range,
+				     sizeof(wrong_logical_range)) != 0 ||
+		    __builtin_memcmp(&data[203], wrong_logical_range,
+				     sizeof(wrong_logical_range)) != 0)
+			break;
 		__builtin_memcpy(data, fixed_rdesc_pad, sizeof(fixed_rdesc_pad));
 		__builtin_memcpy(data + sizeof(fixed_rdesc_pad), fixed_rdesc_pen,
 				 sizeof(fixed_rdesc_pen));
