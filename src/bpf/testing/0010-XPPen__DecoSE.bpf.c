@@ -34,10 +34,10 @@
  * (report 6) and the pen (report 7, with the same wrong +/-127 tilt
  * range). The merged descriptor is the default-mode pad descriptor
  * (102-byte variant) directly followed by the pen descriptor
- * (211 = 102 + 109). probe() accepts this size and the fixup replaces
- * the merged descriptor with the fixed pad descriptor followed by the
- * fixed pen descriptor, after checking that the layout really is
- * pad-then-pen.
+ * (211 = 102 + 109). probe() accepts this size; the fixup replaces the
+ * pad part with the fixed pad descriptor, moves the pen descriptor up
+ * to follow it and corrects its tilt range, after checking that the
+ * layout really is pad-then-pen.
  *
  * The pad report descriptor, see
  * https://gitlab.freedesktop.org/libevdev/udev-hid-bpf/-/issues/54
@@ -166,23 +166,6 @@ static const __u8 fixed_rdesc_pad[] = {
 	)
 };
 
-/* The pen descriptor with the tilt logical range already corrected to
- * +/-60. It is used as the pen part of the Bluetooth merged descriptor
- * (the BT descriptor carries the wrong +/-127 range).
- */
-static const __u8 fixed_rdesc_pen[] = {
-	0x05, 0x0d, 0x09, 0x02, 0xa1, 0x01, 0x85, 0x07, 0x09, 0x20, 0xa1, 0x01,
-	0x09, 0x42, 0x09, 0x44, 0x09, 0x45, 0x09, 0x3c, 0x15, 0x00, 0x25, 0x01,
-	0x75, 0x01, 0x95, 0x04, 0x81, 0x02, 0x95, 0x01, 0x81, 0x03, 0x09, 0x32,
-	0x95, 0x01, 0x81, 0x02, 0x95, 0x02, 0x81, 0x03, 0x75, 0x10, 0x95, 0x01,
-	0x35, 0x00, 0xa4, 0x05, 0x01, 0x09, 0x30, 0x65, 0x13, 0x55, 0x0d, 0x46,
-	0x5f, 0x1b, 0x26, 0x85, 0x45, 0x81, 0x02, 0x09, 0x31, 0x46, 0x16, 0x11,
-	0x26, 0x65, 0x2b, 0x81, 0x02, 0xb4, 0x09, 0x30, 0x45, 0x00, 0x26, 0xff,
-	0x3f, 0x81, 0x42, 0x09, 0x3d, 0x15, 0xc4, 0x25, 0x3c, 0x75, 0x08, 0x95,
-	0x01, 0x81, 0x02, 0x09, 0x3e, 0x15, 0xc4, 0x25, 0x3c, 0x81, 0x02, 0xc0,
-	0xc0,
-};
-
 SEC(HID_BPF_RDESC_FIXUP)
 int BPF_PROG(xppen_decose_rdesc_fixup, struct hid_bpf_ctx *hctx)
 {
@@ -202,21 +185,37 @@ int BPF_PROG(xppen_decose_rdesc_fixup, struct hid_bpf_ctx *hctx)
 	case BT_REPORT_DESCRIPTOR_LENGTH:
 		/* The merged descriptor is the 102-byte pad descriptor
 		 * directly followed by the pen descriptor. Do not
-		 * replace it unless the layout really is pad-then-pen:
+		 * touch it unless the layout really is pad-then-pen:
 		 * check the pen report ID (0x85 0x07 at offset
-		 * 102 + 6) and the wrong tilt range (at offsets
-		 * 102 + 89 and 102 + 101).
+		 * PAD_REPORT_DESCRIPTOR_LENGTH_V2 + 6) and the wrong
+		 * tilt range (at PAD_REPORT_DESCRIPTOR_LENGTH_V2 + 89
+		 * and PAD_REPORT_DESCRIPTOR_LENGTH_V2 + 101).
 		 */
-		if (__builtin_memcmp(&data[108], (const __u8[]){0x85, 0x07}, 2) != 0 ||
-		    __builtin_memcmp(&data[191], wrong_logical_range,
+		if (__builtin_memcmp(&data[PAD_REPORT_DESCRIPTOR_LENGTH_V2 + 6],
+				     (const __u8[]){0x85, 0x07}, 2) != 0 ||
+		    __builtin_memcmp(&data[PAD_REPORT_DESCRIPTOR_LENGTH_V2 + 89],
+				     wrong_logical_range,
 				     sizeof(wrong_logical_range)) != 0 ||
-		    __builtin_memcmp(&data[203], wrong_logical_range,
+		    __builtin_memcmp(&data[PAD_REPORT_DESCRIPTOR_LENGTH_V2 + 101],
+				     wrong_logical_range,
 				     sizeof(wrong_logical_range)) != 0)
 			break;
+		/* Replace the pad part with the fixed pad descriptor
+		 * and move the pen descriptor up to follow it. The pen
+		 * bytes are kept verbatim; only the wrong tilt range is
+		 * corrected, same as for the separate pen interface.
+		 */
+		__builtin_memmove(data + sizeof(fixed_rdesc_pad),
+				  data + PAD_REPORT_DESCRIPTOR_LENGTH_V2,
+				  PEN_REPORT_DESCRIPTOR_LENGTH);
 		__builtin_memcpy(data, fixed_rdesc_pad, sizeof(fixed_rdesc_pad));
-		__builtin_memcpy(data + sizeof(fixed_rdesc_pad), fixed_rdesc_pen,
-				 sizeof(fixed_rdesc_pen));
-		return sizeof(fixed_rdesc_pad) + sizeof(fixed_rdesc_pen);
+		__builtin_memcpy(&data[sizeof(fixed_rdesc_pad) + 89],
+				 correct_logical_range,
+				 sizeof(correct_logical_range));
+		__builtin_memcpy(&data[sizeof(fixed_rdesc_pad) + 101],
+				 correct_logical_range,
+				 sizeof(correct_logical_range));
+		return sizeof(fixed_rdesc_pad) + PEN_REPORT_DESCRIPTOR_LENGTH;
 	case PEN_REPORT_DESCRIPTOR_LENGTH:
 		if (__builtin_memcmp(&data[89], wrong_logical_range,
 				     sizeof(wrong_logical_range)) == 0)
