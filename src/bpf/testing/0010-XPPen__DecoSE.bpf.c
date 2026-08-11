@@ -113,6 +113,16 @@
 #define PAD_REPORT_ID 6
 #define PAD_NUM_BUTTONS 8
 
+/* Offsets into the pen report descriptor (109 bytes), relative to the
+ * start of the pen part:
+ *   6:   pen report ID 0x85 0x07
+ *   89:  Tilt X LogicalMinimum/LogicalMaximum
+ *   101: Tilt Y LogicalMinimum/LogicalMaximum
+ */
+#define PEN_REPORT_ID_OFFSET 6
+#define PEN_TILT_X_LOGICAL_RANGE_OFFSET 89
+#define PEN_TILT_Y_LOGICAL_RANGE_OFFSET 101
+
 HID_BPF_CONFIG(
 	HID_DEVICE(BUS_USB, HID_GROUP_GENERIC, VID_UGEE, PID_DECO_SE),
 	HID_DEVICE(BUS_BLUETOOTH, HID_GROUP_GENERIC, VID_UGEE, PID_DECO_SE),
@@ -166,13 +176,32 @@ static const __u8 fixed_rdesc_pad[] = {
 	)
 };
 
+/* The pen announces a wrong tilt range of +/-127 (0x15 0x81 0x25 0x7f)
+ * while only ever sending values within +/-60; patch the logical range
+ * to +/-60 (0x15 0xc4 0x25 0x3c), see fix_pen_tilt() below.
+ */
+static const __u8 wrong_logical_range[] = {0x15, 0x81, 0x25, 0x7f};
+static const __u8 correct_logical_range[] = {0x15, 0xc4, 0x25, 0x3c};
+
+/* Patch the pen's wrong +/-127 tilt range to +/-60 in place.
+ * Already-fixed descriptors (clean mode) are left alone.
+ */
+static inline void fix_pen_tilt(__u8 *pen)
+{
+	if (__builtin_memcmp(&pen[PEN_TILT_X_LOGICAL_RANGE_OFFSET],
+			     wrong_logical_range, sizeof(wrong_logical_range)) == 0)
+		__builtin_memcpy(&pen[PEN_TILT_X_LOGICAL_RANGE_OFFSET],
+				 correct_logical_range, sizeof(correct_logical_range));
+	if (__builtin_memcmp(&pen[PEN_TILT_Y_LOGICAL_RANGE_OFFSET],
+			     wrong_logical_range, sizeof(wrong_logical_range)) == 0)
+		__builtin_memcpy(&pen[PEN_TILT_Y_LOGICAL_RANGE_OFFSET],
+				 correct_logical_range, sizeof(correct_logical_range));
+}
+
 SEC(HID_BPF_RDESC_FIXUP)
 int BPF_PROG(xppen_decose_rdesc_fixup, struct hid_bpf_ctx *hctx)
 {
 	__u8 *data = hid_bpf_get_data(hctx, 0 /* offset */, HID_MAX_DESCRIPTOR_SIZE /* size */);
-
-	const __u8 wrong_logical_range[] = {0x15, 0x81, 0x25, 0x7f};
-	const __u8 correct_logical_range[] = {0x15, 0xc4, 0x25, 0x3c};
 
 	if (!data)
 		return 0; /* EPERM check */
@@ -186,17 +215,14 @@ int BPF_PROG(xppen_decose_rdesc_fixup, struct hid_bpf_ctx *hctx)
 		/* The merged descriptor is the 102-byte pad descriptor
 		 * directly followed by the pen descriptor. Do not
 		 * touch it unless the layout really is pad-then-pen:
-		 * check the pen report ID (0x85 0x07 at offset
-		 * PAD_REPORT_DESCRIPTOR_LENGTH_V2 + 6) and the wrong
-		 * tilt range (at PAD_REPORT_DESCRIPTOR_LENGTH_V2 + 89
-		 * and PAD_REPORT_DESCRIPTOR_LENGTH_V2 + 101).
+		 * check the pen report ID and the wrong tilt range.
 		 */
-		if (__builtin_memcmp(&data[PAD_REPORT_DESCRIPTOR_LENGTH_V2 + 6],
+		if (__builtin_memcmp(&data[PAD_REPORT_DESCRIPTOR_LENGTH_V2 + PEN_REPORT_ID_OFFSET],
 				     (const __u8[]){0x85, 0x07}, 2) != 0 ||
-		    __builtin_memcmp(&data[PAD_REPORT_DESCRIPTOR_LENGTH_V2 + 89],
+		    __builtin_memcmp(&data[PAD_REPORT_DESCRIPTOR_LENGTH_V2 + PEN_TILT_X_LOGICAL_RANGE_OFFSET],
 				     wrong_logical_range,
 				     sizeof(wrong_logical_range)) != 0 ||
-		    __builtin_memcmp(&data[PAD_REPORT_DESCRIPTOR_LENGTH_V2 + 101],
+		    __builtin_memcmp(&data[PAD_REPORT_DESCRIPTOR_LENGTH_V2 + PEN_TILT_Y_LOGICAL_RANGE_OFFSET],
 				     wrong_logical_range,
 				     sizeof(wrong_logical_range)) != 0)
 			break;
@@ -209,22 +235,10 @@ int BPF_PROG(xppen_decose_rdesc_fixup, struct hid_bpf_ctx *hctx)
 				  data + PAD_REPORT_DESCRIPTOR_LENGTH_V2,
 				  PEN_REPORT_DESCRIPTOR_LENGTH);
 		__builtin_memcpy(data, fixed_rdesc_pad, sizeof(fixed_rdesc_pad));
-		__builtin_memcpy(&data[sizeof(fixed_rdesc_pad) + 89],
-				 correct_logical_range,
-				 sizeof(correct_logical_range));
-		__builtin_memcpy(&data[sizeof(fixed_rdesc_pad) + 101],
-				 correct_logical_range,
-				 sizeof(correct_logical_range));
+		fix_pen_tilt(data + sizeof(fixed_rdesc_pad));
 		return sizeof(fixed_rdesc_pad) + PEN_REPORT_DESCRIPTOR_LENGTH;
 	case PEN_REPORT_DESCRIPTOR_LENGTH:
-		if (__builtin_memcmp(&data[89], wrong_logical_range,
-				     sizeof(wrong_logical_range)) == 0)
-			__builtin_memcpy(&data[89], correct_logical_range,
-					 sizeof(correct_logical_range));
-		if (__builtin_memcmp(&data[101], wrong_logical_range,
-				     sizeof(wrong_logical_range)) == 0)
-			__builtin_memcpy(&data[101], correct_logical_range,
-					 sizeof(correct_logical_range));
+		fix_pen_tilt(data);
 		break;
 	}
 
