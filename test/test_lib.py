@@ -471,3 +471,178 @@ class TestGaomonM6:
     def test_events(self, bpf, report, expected):
         event = bpf.hid_bpf_device_event(report=report)
         assert event == expected
+
+
+# The XP-Pen Deco SE default-mode pad descriptor (100 or 102 bytes) is
+# replaced wholesale with this 68-byte tablet pad descriptor, see the
+# fixed_rdesc_pad in the BPF program.
+DECO_SE_FIXED_PAD_RDESC = bytes.fromhex(
+    "05010907a101850695017508050d0939a10005091901290815002501950875018102"
+    "050d094495017501810295078101050109300931950275088102950375088101c0c0"
+)
+# The pen announces a +/-127 tilt range while only ever sending +/-60,
+# see wrong_logical_range/correct_logical_range in the BPF program.
+DECO_SE_WRONG_TILT_RANGE = bytes([0x15, 0x81, 0x25, 0x7F])
+DECO_SE_CORRECT_TILT_RANGE = bytes([0x15, 0xC4, 0x25, 0x3C])
+
+
+def _decose_pen(
+    report_id=0x07,
+    tilt_x=DECO_SE_WRONG_TILT_RANGE,
+    tilt_y=DECO_SE_WRONG_TILT_RANGE,
+):
+    """A 109-byte pen descriptor with the report ID and tilt anchors set.
+
+    The offsets match PEN_REPORT_ID_OFFSET (6), PEN_TILT_X_*_OFFSET (89)
+    and PEN_TILT_Y_*_OFFSET (101) in the BPF program.
+    """
+    pen = bytearray(109)
+    pen[6:8] = bytes([0x85, report_id])
+    pen[89:93] = tilt_x
+    pen[101:105] = tilt_y
+    return bytes(pen)
+
+
+@pytest.mark.parametrize("source", ["0010-XPPen__DecoSE"])
+class TestXPPenDecoSE:
+    @pytest.mark.parametrize("rdesc_size", [100, 102, 109, 211])
+    def test_probe(self, bpf, rdesc_size):
+        probe_args = HidProbeArgs(rdesc_size=rdesc_size)
+        pa = bpf.probe(probe_args)
+        assert pa.retval == 0
+
+    @pytest.mark.parametrize(
+        "rdesc_size",
+        [36, 68, 123],  # vendor interface, clean-mode pad, garbage
+    )
+    def test_probe_ignore_invalid_size(self, bpf, rdesc_size):
+        probe_args = HidProbeArgs(rdesc_size=rdesc_size)
+        pa = bpf.probe(probe_args)
+        assert pa.retval == -22
+
+    @pytest.mark.parametrize("rdesc_size", [100, 102])
+    def test_pad_rdesc_fixup(self, bpf, rdesc_size):
+        # the pad descriptor is replaced wholesale, so the input
+        # content does not matter
+        rdesc = bytes(rdesc_size)
+
+        data = bpf.hid_bpf_rdesc_fixup(rdesc=rdesc)
+        assert data == DECO_SE_FIXED_PAD_RDESC
+
+    def test_bt_rdesc_fixup(self, bpf):
+        # 211 bytes: the 102-byte pad descriptor directly followed by
+        # the 109-byte pen descriptor. The pad part is replaced, the pen
+        # part is moved up verbatim with only the tilt range corrected.
+        rdesc = bytes(102) + _decose_pen()
+
+        expected_pen = bytearray(_decose_pen())
+        expected_pen[89:93] = DECO_SE_CORRECT_TILT_RANGE
+        expected_pen[101:105] = DECO_SE_CORRECT_TILT_RANGE
+
+        data = bpf.hid_bpf_rdesc_fixup(rdesc=rdesc)
+        assert data == DECO_SE_FIXED_PAD_RDESC + bytes(expected_pen)
+
+    def test_bt_rdesc_fixup_ignore_wrong_pen_report_id(self, bpf):
+        # the guard requires the pen report ID (0x85 0x07) at offset 108
+        rdesc = bytes(102) + _decose_pen(report_id=0x06)
+
+        data = bpf.hid_bpf_rdesc_fixup(rdesc=rdesc)
+        assert data == rdesc
+
+    def test_bt_rdesc_fixup_ignore_corrected_tilt(self, bpf):
+        # the guard requires the wrong +/-127 tilt range on both axes
+        rdesc = bytes(102) + _decose_pen(tilt_x=DECO_SE_CORRECT_TILT_RANGE)
+
+        data = bpf.hid_bpf_rdesc_fixup(rdesc=rdesc)
+        assert data == rdesc
+
+    def test_pen_rdesc_fixup(self, bpf):
+        # standalone pen interface with the wrong +/-127 tilt range
+        rdesc = _decose_pen()
+
+        expected = bytearray(rdesc)
+        expected[89:93] = DECO_SE_CORRECT_TILT_RANGE
+        expected[101:105] = DECO_SE_CORRECT_TILT_RANGE
+
+        data = bpf.hid_bpf_rdesc_fixup(rdesc=rdesc)
+        assert data == bytes(expected)
+
+    def test_pen_rdesc_fixup_ignore_correct_tilt(self, bpf):
+        # already-corrected descriptors (clean mode) are left alone
+        rdesc = _decose_pen(
+            tilt_x=DECO_SE_CORRECT_TILT_RANGE,
+            tilt_y=DECO_SE_CORRECT_TILT_RANGE,
+        )
+
+        data = bpf.hid_bpf_rdesc_fixup(rdesc=rdesc)
+        assert data == rdesc
+
+    @pytest.mark.parametrize(
+        "report, expected",
+        [
+            pytest.param(
+                "06 00 05 00 00 00 00 00",
+                "06 01 00 00 00 00 00 00",
+                id="button-1",
+            ),
+            pytest.param(
+                "06 00 08 00 00 00 00 00",
+                "06 02 00 00 00 00 00 00",
+                id="button-2",
+            ),
+            pytest.param(
+                "06 04 00 00 00 00 00 00",
+                "06 04 00 00 00 00 00 00",
+                id="button-3",
+            ),
+            pytest.param(
+                "06 00 2c 00 00 00 00 00",
+                "06 08 00 00 00 00 00 00",
+                id="button-4",
+            ),
+            pytest.param(
+                "06 01 16 00 00 00 00 00",
+                "06 10 00 00 00 00 00 00",
+                id="button-5",
+            ),
+            pytest.param(
+                "06 01 1d 00 00 00 00 00",
+                "06 20 00 00 00 00 00 00",
+                id="button-6",
+            ),
+            pytest.param(
+                "06 01 57 00 00 00 00 00",
+                "06 40 00 00 00 00 00 00",
+                id="button-7",
+            ),
+            pytest.param(
+                "06 01 56 00 00 00 00 00",
+                "06 80 00 00 00 00 00 00",
+                id="button-8",
+            ),
+            pytest.param(
+                "06 05 16 00 00 00 00 00",
+                "06 14 00 00 00 00 00 00",
+                id="buttons-3-and-5",
+            ),
+            pytest.param(
+                "06 00 08 05 00 00 00 00",
+                "06 03 00 00 00 00 00 00",
+                id="buttons-1-and-2",
+            ),
+            pytest.param(
+                "06 00 00 00 00 00 00 00",
+                "06 00 00 00 00 00 00 00",
+                id="buttons-released",
+            ),
+            # Non-pad reports should remain unchanged
+            pytest.param(
+                "02 01 02 03 04 05 06 07",
+                "02 01 02 03 04 05 06 07",
+                id="invalid-report",
+            ),
+        ],
+    )
+    def test_button_events(self, bpf, report, expected):
+        event = bpf.hid_bpf_device_event(report=report)
+        assert event == expected
