@@ -5,6 +5,7 @@
 #include "vmlinux.h"
 #include "hid_bpf.h"
 #include "hid_bpf_helpers.h"
+#include "huion.h"
 #include "hid_report_helpers.h"
 #include <bpf/bpf_tracing.h>
 
@@ -29,6 +30,12 @@ char EXPECTED_FIRMWARE_ID[] = "HUION_T21j_";
  * hid report to report everything instead.
  * Depending on the mode some hid reports are never sent and the corresponding
  * devices are mute.
+ *
+ * On kernels providing the hid_bpf_get_string_descriptor() kfunc, this
+ * program reads the firmware ID from the device itself, stores it as the
+ * device's uniq, and switches the tablet to tablet mode. huion-switcher
+ * (and the HUION_FIRMWARE_ID udev property) is then only needed on older
+ * kernels.
  *
  * To switch the tablet use e.g.  https://github.com/whot/huion-switcher
  * or one of the tools from the digimend project
@@ -375,7 +382,7 @@ static const __u8 disabled_rdesc_pad[] = {
 	FixedSizeVendorReport(PAD_REPORT_LENGTH)
 };
 
-SEC(HID_BPF_RDESC_FIXUP)
+SEC(HID_BPF_RDESC_FIXUP_SLEEPABLE)
 int BPF_PROG(hid_fix_rdesc, struct hid_bpf_ctx *hctx)
 {
 	__u8 *data = hid_bpf_get_data(hctx, 0 /* offset */, HID_MAX_DESCRIPTOR_SIZE /* size */);
@@ -389,9 +396,14 @@ int BPF_PROG(hid_fix_rdesc, struct hid_bpf_ctx *hctx)
 	 * disable the default pad/pen nodes. They won't send events
 	 * but cause duplicate devices.
 	 */
-	have_fw_id = __builtin_memcmp(UDEV_PROP_HUION_FIRMWARE_ID,
-				      EXPECTED_FIRMWARE_ID,
-				      sizeof(EXPECTED_FIRMWARE_ID) - 1) == 0;
+	/* Reads the firmware ID from the device if the kernel supports
+	 * it (sets uniq, and switches to vendor mode on the vendor
+	 * interface), otherwise uses the udev property set by huion-switcher.
+	 */
+	have_fw_id = huion_probe_firmware(hctx, UDEV_PROP_HUION_FIRMWARE_ID,
+					  EXPECTED_FIRMWARE_ID,
+					  sizeof(EXPECTED_FIRMWARE_ID) - 1,
+					  rdesc_size == VENDOR_REPORT_DESCRIPTOR_LENGTH);
 	if (rdesc_size == PAD_REPORT_DESCRIPTOR_LENGTH) {
 		if (have_fw_id) {
 			__builtin_memcpy(data, disabled_rdesc_pad, sizeof(disabled_rdesc_pad));

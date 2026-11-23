@@ -5,6 +5,7 @@
 #include "vmlinux.h"
 #include "hid_bpf.h"
 #include "hid_bpf_helpers.h"
+#include "huion.h"
 #include "hid_report_helpers.h"
 #include <bpf/bpf_tracing.h>
 
@@ -50,6 +51,12 @@ HID_BPF_CONFIG(
  * problem with the firmware mode exists: it is impossible to tell which of the
  * two wheels are being rotated (or having their central button pressed).
  *
+ *
+ * On kernels providing the hid_bpf_get_string_descriptor() kfunc, this
+ * program reads the firmware ID from the device itself, stores it as the
+ * device's uniq, and switches the tablet to tablet mode. huion-switcher
+ * (and the HUION_FIRMWARE_ID udev property) is then only needed on older
+ * kernels.
  *
  * By using a tool such as huion-switcher (https://github.com/whot/huion-switcher),
  * the tablet can be made to send reports using a proprietary format that is not
@@ -1236,7 +1243,7 @@ static const __u8 fixed_rdesc_vendor[] = {
 	)
 };
 
-SEC(HID_BPF_RDESC_FIXUP)
+SEC(HID_BPF_RDESC_FIXUP_SLEEPABLE)
 int BPF_PROG(hid_fix_rdesc_huion_kamvas13_gen3, struct hid_bpf_ctx *hid_ctx)
 {
 	__u8 *data = hid_bpf_get_data(hid_ctx, 0 /* offset */, HID_MAX_DESCRIPTOR_SIZE /* size */);
@@ -1246,9 +1253,14 @@ int BPF_PROG(hid_fix_rdesc_huion_kamvas13_gen3, struct hid_bpf_ctx *hid_ctx)
 	if (!data)
 		return 0; /* EPERM check */
 
-	have_fw_id = __builtin_memcmp(UDEV_PROP_HUION_FIRMWARE_ID,
-					EXPECTED_FIRMWARE_ID,
-					sizeof(EXPECTED_FIRMWARE_ID) - 1) == 0;
+	/* Reads the firmware ID from the device if the kernel supports
+	 * it (sets uniq, and switches to vendor mode on the vendor
+	 * interface), otherwise uses the udev property set by huion-switcher.
+	 */
+	have_fw_id = huion_probe_firmware(hid_ctx, UDEV_PROP_HUION_FIRMWARE_ID,
+					  EXPECTED_FIRMWARE_ID,
+					  sizeof(EXPECTED_FIRMWARE_ID) - 1,
+					  rdesc_size == VENDOR_DESCRIPTOR_LENGTH);
 
 	if (have_fw_id) {
 		/*

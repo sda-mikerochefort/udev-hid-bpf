@@ -5,6 +5,7 @@
 #include "vmlinux.h"
 #include "hid_bpf.h"
 #include "hid_bpf_helpers.h"
+#include "huion.h"
 #include "hid_report_helpers.h"
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_endian.h>
@@ -56,6 +57,12 @@ const char EXPECTED_FIRMWARE_ID[] = "HVAN";
  * In tablet mode it uses a vendor specific hid report to report everything instead.
  * Depending on the mode some hid reports are never sent and the corresponding
  * devices are mute.
+ *
+ * On kernels providing the hid_bpf_get_string_descriptor() kfunc, this
+ * program reads the firmware ID from the device itself, stores it as the
+ * device's uniq, and switches the tablet to tablet mode. huion-switcher
+ * (and the HUION_FIRMWARE_ID udev property) is then only needed on older
+ * kernels.
  *
  * To switch the tablet use e.g.  https://github.com/whot/huion-switcher
  * or one of the tools from the digimend project
@@ -452,14 +459,19 @@ static const __u8 disabled_rdesc_pad[] = {
 	FixedSizeVendorReport(PAD_REPORT_LENGTH)
 };
 
-SEC(HID_BPF_RDESC_FIXUP)
+SEC(HID_BPF_RDESC_FIXUP_SLEEPABLE)
 int BPF_PROG(h610_pro_fix_rdesc, struct hid_bpf_ctx *hctx)
 {
 	__u8 *data = hid_bpf_get_data(hctx, 0 /* offset */, HID_MAX_DESCRIPTOR_SIZE /* size */);
 	__s32 rdesc_size = hctx->size;
+	char fw_id[HUION_FIRMWARE_ID_SIZE] = {0};
 
 	if (!data)
 		return 0; /* EPERM check */
+
+	/* probe() already checked the firmware ID; expose it as uniq */
+	if (huion_read_string(hctx, HUION_STRING_INDEX_FIRMWARE_ID, fw_id) > 0)
+		huion_set_uniq(hctx, fw_id);
 
 	/* If we have a firmware ID and it matches our expected prefix, we
 	 * disable the default pad/pen nodes. They won't send events
@@ -560,6 +572,57 @@ int magic_bytes_to_u16(const char *data)
 	return __builtin_bswap16(res);
 }
 
+/*
+ * Read the firmware ID and the magic bytes directly from the device.
+ * Reading the magic bytes switches the tablet to its native mode.
+ * The magic bytes are the raw descriptor, the *_IDX offsets above are
+ * for its hex representation in the udev property, hence the / 2.
+ *
+ * Returns 0 on success, -EOPNOTSUPP if the kernel can't read string
+ * descriptors, or another negative error.
+ */
+static int h610_params_from_device(unsigned int hid, __u8 *have_fw_id,
+				   int *x_lmax, int *y_lmax,
+				   int *pressure_lmax, int *resolution)
+{
+	char fw_id[HUION_FIRMWARE_ID_SIZE] = {0};
+	__u8 magic[32] = {0};
+	struct hid_bpf_ctx *hctx;
+	int ret;
+
+	hctx = hid_bpf_allocate_context(hid);
+	if (!hctx)
+		return -ENODEV;
+
+	ret = huion_read_string(hctx, HUION_STRING_INDEX_FIRMWARE_ID, fw_id);
+	if (ret < 0)
+		goto out;
+
+	*have_fw_id = ret >= (int)sizeof(EXPECTED_FIRMWARE_ID) - 1 &&
+		      __builtin_memcmp(fw_id, EXPECTED_FIRMWARE_ID,
+				       sizeof(EXPECTED_FIRMWARE_ID) - 1) == 0;
+
+	ret = huion_read_magic(hctx, magic, sizeof(magic));
+	if (ret < 0)
+		goto out;
+	if (ret < RESOLUTION_IDX / 2 + 2) {
+		ret = -EIO;
+		goto out;
+	}
+
+#define MAGIC_U16(_idx) (magic[(_idx) / 2] | (magic[(_idx) / 2 + 1] << 8))
+	*x_lmax = MAGIC_U16(X_LOGICAL_MAX_IDX);
+	*y_lmax = MAGIC_U16(Y_LOGICAL_MAX_IDX);
+	*pressure_lmax = MAGIC_U16(PRESSURE_LOGICAL_MAX_IDX);
+	*resolution = MAGIC_U16(RESOLUTION_IDX);
+#undef MAGIC_U16
+	ret = 0;
+
+out:
+	hid_bpf_release_context(hctx);
+	return ret;
+}
+
 SEC("syscall")
 int probe(struct hid_bpf_probe_args *ctx)
 {
@@ -567,13 +630,21 @@ int probe(struct hid_bpf_probe_args *ctx)
 	(__builtin_memcmp(_input,			\
 			  _match,			\
 			  sizeof(_match) - 1) == 0)
-	__u8 have_fw_id = MATCHES_STRING(UDEV_PROP_HUION_FIRMWARE_ID, EXPECTED_FIRMWARE_ID);
-#undef MATCHES_STRING
+	__u8 have_fw_id = 0;
+	int x_lmax = 0, y_lmax = 0, pressure_lmax = 0, resolution = 0;
 
-	int x_lmax = magic_bytes_to_u16(UDEV_PROP_HUION_MAGIC_BYTES + X_LOGICAL_MAX_IDX);
-	int y_lmax = magic_bytes_to_u16(UDEV_PROP_HUION_MAGIC_BYTES + Y_LOGICAL_MAX_IDX);
-	int pressure_lmax = magic_bytes_to_u16(UDEV_PROP_HUION_MAGIC_BYTES + PRESSURE_LOGICAL_MAX_IDX);
-	int resolution = magic_bytes_to_u16(UDEV_PROP_HUION_MAGIC_BYTES + RESOLUTION_IDX);
+	/* Prefer the device itself; fall back to the udev properties set
+	 * by huion-switcher on kernels without hid_bpf_get_string_descriptor().
+	 */
+	if (h610_params_from_device(ctx->hid, &have_fw_id, &x_lmax, &y_lmax,
+				    &pressure_lmax, &resolution) < 0) {
+		have_fw_id = MATCHES_STRING(UDEV_PROP_HUION_FIRMWARE_ID, EXPECTED_FIRMWARE_ID);
+		x_lmax = magic_bytes_to_u16(UDEV_PROP_HUION_MAGIC_BYTES + X_LOGICAL_MAX_IDX);
+		y_lmax = magic_bytes_to_u16(UDEV_PROP_HUION_MAGIC_BYTES + Y_LOGICAL_MAX_IDX);
+		pressure_lmax = magic_bytes_to_u16(UDEV_PROP_HUION_MAGIC_BYTES + PRESSURE_LOGICAL_MAX_IDX);
+		resolution = magic_bytes_to_u16(UDEV_PROP_HUION_MAGIC_BYTES + RESOLUTION_IDX);
+	}
+#undef MATCHES_STRING
 
 	/* if firmware ID is not set or doesn't match, we abort: we don't know
 	 * if the device is ours or not.
