@@ -58,6 +58,10 @@ static struct test_callbacks {
 	int (*hid_bpf_input_report)(struct test_callbacks *callbacks,
 				    struct hid_bpf_ctx *ctx,
 				    int type, uint8_t *data, uint32_t len);
+	int (*hid_bpf_get_string_descriptor)(struct test_callbacks *callbacks,
+					     struct hid_bpf_ctx *ctx,
+					     uint8_t index, uint16_t langid,
+					     uint8_t *buf, size_t buf__sz);
 	/* The data returned by hid_bpf_get_data */
 	uint8_t *hid_bpf_data;
 	size_t hid_bpf_data_sz;
@@ -251,6 +255,41 @@ int hid_bpf_input_report(struct hid_bpf_ctx *ctx,
 		return 0;
 
 	return callbacks.hid_bpf_input_report(&callbacks, ctx, type, buf, len);
+}
+
+/* stdlib.h conflicts with vmlinux.h */
+extern long strtol(const char *nptr, char **endptr, int base);
+
+/* same semantics as the bpf_strtol() helper: parse at most buf_len chars,
+ * base in the lower 5 bits of flags, return the number of chars consumed */
+long bpf_strtol__hid_bpf(const char *buf, unsigned long buf_len,
+			 unsigned long long flags, long *res)
+{
+	char tmp[64];
+	char *end;
+	unsigned long n = buf_len < sizeof(tmp) - 1 ? buf_len : sizeof(tmp) - 1;
+	unsigned long i;
+
+	for (i = 0; i < n && buf[i]; i++)
+		tmp[i] = buf[i];
+	tmp[i] = '\0';
+
+	*res = strtol(tmp, &end, flags & 0x1f);
+	if (end == tmp)
+		return -22; /* -EINVAL */
+
+	return end - tmp;
+}
+
+int hid_bpf_get_string_descriptor(struct hid_bpf_ctx *ctx,
+				  __u8 index, __u16 langid,
+				  __u8 *buf, size_t buf__sz)
+{
+	if (!callbacks.hid_bpf_get_string_descriptor)
+		return -95; /* -EOPNOTSUPP, errno.h conflicts with vmlinux.h */
+
+	return callbacks.hid_bpf_get_string_descriptor(&callbacks, ctx, index,
+							langid, buf, buf__sz);
 }
 
 int bpf_iter_num_new(struct bpf_iter_num *it, int start, int end)

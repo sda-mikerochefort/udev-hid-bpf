@@ -63,4 +63,8 @@ extern int bpf_timer_start(void *, int, int);
 #define bpf_timer_cancel bpf_timer_cancel__hid_bpf
 extern int bpf_timer_cancel(void *);
 
+#define bpf_strtol bpf_strtol__hid_bpf
+extern long bpf_strtol(const char *buf, unsigned long buf_len,
+		       unsigned long long flags, long *res);
+
 #endif /* __UHID_BPF_TEST_WRAPPERS_H */

@@ -140,6 +140,13 @@ class HidRawRequest:
 
 
 @dataclass
+class StringDescriptorRequest:
+    time: int
+    index: int
+    langid: int
+
+
+@dataclass
 class InputReport:
     time: int
     data: Tuple[bytes]
@@ -174,9 +181,19 @@ class PrivateTestData:
     id: int = dataclasses.field(default_factory=lambda: random.randint(0, 0xFFFF))
     vendor: int = 0
     product: int = 0
+    uniq: bytes = b""
     output_reports: list[OutputReport] = dataclasses.field(default_factory=list)
     hw_requests: list[HidRawRequest] = dataclasses.field(default_factory=list)
     input_reports: list[InputReport] = dataclasses.field(default_factory=list)
+    # USB string descriptors served by hid_bpf_get_string_descriptor(),
+    # keyed by index: a str is encoded as a UTF-16LE string descriptor,
+    # bytes are returned as-is (the raw descriptor including its header).
+    # None means the transport has no string descriptors (-EOPNOTSUPP),
+    # as with an older kernel or a non-USB device.
+    string_descriptors: Optional[dict[int, str | bytes]] = None
+    string_descriptor_requests: list[StringDescriptorRequest] = dataclasses.field(
+        default_factory=list
+    )
     maps_data: dict[int, dict[int, ...]] = dataclasses.field(default_factory=dict)
     queue_data: dict[int, collections.deque] = dataclasses.field(default_factory=dict)
     asyncs: dict[int, TestAsyncCb] = dataclasses.field(default_factory=dict)
@@ -196,6 +213,7 @@ class Callbacks(ctypes.Structure):
         hid = HidDevice(id=private.id)
         hid.vendor = private.vendor
         hid.product = private.product
+        hid.uniq = private.uniq
         private.current_ctx.hid = ctypes.pointer(hid)
 
         super().__init__(private_data=ctypes.py_object(private))
@@ -450,6 +468,32 @@ class Callbacks(ctypes.Structure):
             InputReport(callbacks.time, data, ReportType(_type))
         )
         return 0
+
+    def _hid_bpf_get_string_descriptor(callbacks_p, ctx_p, index, langid, buf_p, size):
+        if not Callbacks.validate_ctx(callbacks_p, ctx_p):
+            return -errno.EINVAL
+        if size < 2:
+            return -errno.EINVAL
+
+        callbacks = callbacks_p.contents
+        pdata = callbacks.private_data
+        if pdata.string_descriptors is None:
+            return -errno.EOPNOTSUPP
+
+        pdata.string_descriptor_requests.append(
+            StringDescriptorRequest(callbacks.time, index, langid)
+        )
+
+        value = pdata.string_descriptors.get(index)
+        if value is None:
+            return -errno.EPIPE  # the device stalls unknown indexes
+        if isinstance(value, str):
+            payload = value.encode("utf-16-le")
+            value = bytes([2 + len(payload), 0x03]) + payload
+
+        data = value[: min(size, 255)]
+        ctypes.memmove(buf_p, data, len(data))
+        return len(data)
 
 
 @dataclass
