@@ -69,6 +69,11 @@ extern int hid_bpf_try_input_report(struct hid_bpf_ctx *ctx,
 				    enum hid_report_type type,
 				    __u8 *data,
 				    size_t buf__sz) __weak __ksym;
+/* Read a raw string descriptor (USB only). Proposed upstream, not in a
+ * released kernel yet: always check bpf_ksym_exists() before use. */
+extern int hid_bpf_get_string_descriptor(struct hid_bpf_ctx *ctx,
+					 __u8 index, __u16 langid,
+					 __u8 *buf, size_t buf__sz) __weak __ksym;
 /*
  * bpf_wq_set_callback compatibility:
  *
